@@ -1,0 +1,6 @@
+@FUForum.BackendServer_HostAddress = http://localhost:5011
+
+GET {{FUForum.BackendServer_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

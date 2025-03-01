@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { DefaultLayoutComponent } from './layout';
+import { AuthGuard } from './shared/guard';
 
 export const routes: Routes = [
   {
@@ -53,6 +54,11 @@ export const routes: Routes = [
       {
         path: 'pages',
         loadChildren: () => import('./views/pages/routes').then((m) => m.routes)
+      },
+      {
+        path: 'protected-zone',
+        loadChildren: () => import('./protected-zone/routes').then(m => m.routes), 
+        canActivate: [AuthGuard]
       }
     ]
   },
@@ -72,7 +78,7 @@ export const routes: Routes = [
   },
   {
     path: 'login',
-    loadComponent: () => import('./views/pages/login/login.component').then(m => m.LoginComponent),
+    loadComponent: () => import('./login/login.component').then(m => m.LoginComponent),
     data: {
       title: 'Login Page'
     }
@@ -83,6 +89,10 @@ export const routes: Routes = [
     data: {
       title: 'Register Page'
     }
+  },
+  {
+    path: 'auth-callback',
+    loadChildren: () => import('./auth-callback/auth-callback.module').then(m => m.AuthCallbackModule),
   },
   { path: '**', redirectTo: 'dashboard' }
 ];

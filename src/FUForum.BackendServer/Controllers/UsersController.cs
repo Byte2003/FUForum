@@ -4,6 +4,7 @@ using FUForum.BackendServer.Data.Entities;
 using FUForum.BackendServer.Helpers;
 using FUForum.ViewModels;
 using FUForum.ViewModels.Systems;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;

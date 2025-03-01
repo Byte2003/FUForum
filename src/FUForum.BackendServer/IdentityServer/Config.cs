@@ -56,7 +56,7 @@ namespace FUForum.BackendServer.IdentityServer
                         IdentityServerConstants.StandardScopes.OpenId,
                         IdentityServerConstants.StandardScopes.Profile,
                         IdentityServerConstants.StandardScopes.OfflineAccess,
-                        "api.fuforum"
+                        "api.fuforum.access"
                     }
                  },
                 new Client
@@ -111,7 +111,7 @@ namespace FUForum.BackendServer.IdentityServer
                     {
                         IdentityServerConstants.StandardScopes.OpenId,
                         IdentityServerConstants.StandardScopes.Profile,
-                        "api.fuforum"
+                        "api.fuforum.access"
                     }
                 }
             };

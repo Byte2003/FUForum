@@ -12,6 +12,9 @@ import {
 import { DropdownModule, SidebarModule } from '@coreui/angular';
 import { IconSetService } from '@coreui/icons-angular';
 import { routes } from './app.routes';
+import { AuthGuard } from './shared/guard';
+import { HTTP_INTERCEPTORS, provideHttpClient, withInterceptors } from '@angular/common/http';
+import { authInterceptor, AuthInterceptor } from './shared/interceptors/auth.interceptor';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -24,9 +27,16 @@ export const appConfig: ApplicationConfig = {
         anchorScrolling: 'enabled'
       }),
       withEnabledBlockingInitialNavigation(),
-      withViewTransitions(),
-      withHashLocation()
+      withViewTransitions()
+      
     ),
+    AuthGuard,
+    // provideHttpClient(),{
+    //   provide: HTTP_INTERCEPTORS,
+    //   useClass: AuthInterceptor,
+    //   multi: true
+    // },
+    provideHttpClient(withInterceptors([authInterceptor])),
     importProvidersFrom(SidebarModule, DropdownModule),
     IconSetService,
     provideAnimationsAsync()

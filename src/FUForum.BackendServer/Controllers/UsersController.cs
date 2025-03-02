@@ -133,7 +133,7 @@ namespace FUForum.BackendServer.Controllers
         }
 
         // URL: PUT: https://localhost:7017/api/users
-        [HttpPut]
+        [HttpPut("{id}")]
         [ClaimRequirement(FunctionCode.SYSTEM_USER, CommandCode.UPDATE)]
         [ApiValidationFilter]
         public async Task<IActionResult> PutUser(string id, [FromBody] UserCreateRequest request)
@@ -179,7 +179,7 @@ namespace FUForum.BackendServer.Controllers
         }
 
         // URL: DELETE: https://localhost:7017/api/users/{id}
-        [HttpDelete]
+        [HttpDelete("{id}")]
         [ClaimRequirement(FunctionCode.SYSTEM_USER, CommandCode.DELETE)]
         [ApiValidationFilter]
         public async Task<IActionResult> DeleteUser(string id)

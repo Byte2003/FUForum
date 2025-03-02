@@ -105,7 +105,7 @@ namespace FUForum.BackendServer.Controllers
         }
 
         // URL: PUT: /api/roles
-        [HttpPut]
+        [HttpPut("{id}")]
         [ClaimRequirement(FunctionCode.SYSTEM_ROLE, CommandCode.UPDATE)]
         [ApiValidationFilter]
         public async Task<IActionResult> PutRole(string id, [FromBody] RoleCreateRequest request)
@@ -133,7 +133,7 @@ namespace FUForum.BackendServer.Controllers
         }
 
         // URL: DELETE: /api/roles/{id}
-        [HttpDelete]
+        [HttpDelete("{id}")]
         [ClaimRequirement(FunctionCode.SYSTEM_ROLE, CommandCode.DELETE)]
         [ApiValidationFilter]
         public async Task<IActionResult> DeleteRole(string id)

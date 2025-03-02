@@ -27,7 +27,7 @@ public class ErrorWrappingMiddleware
             context.Response.StatusCode = 500;
         }
 
-        if (!context.Response.HasStarted)
+        if (!context.Response.HasStarted && context.Response.StatusCode != 204)
         {
             context.Response.ContentType = "application/json";
 

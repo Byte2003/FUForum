@@ -15,7 +15,6 @@ export class AuthInterceptor implements HttpInterceptor {
 
   intercept(request: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
     const authHeader = this.authService.authorizationHeaderValue;
-    console.log('AuthInterceptor: Adding Authorization header', authHeader);
   
     if (authHeader) {
       request = request.clone({
@@ -34,7 +33,6 @@ export const authInterceptor: HttpInterceptorFn = (req: HttpRequest<unknown>, ne
   const authService = inject(AuthService); // ✅ Inject AuthService
 
   const authHeader = authService.authorizationHeaderValue; 
-  console.log('AuthInterceptor: Adding Authorization header', authHeader);
 
   if (authHeader) {
     req = req.clone({

@@ -49,6 +49,7 @@ public class IdentityProfileService : IProfileService
         // Add more claims
         claims.Add(new Claim(ClaimTypes.Name, user.UserName));
         claims.Add(new Claim(ClaimTypes.NameIdentifier, user.Id));
+        claims.Add(new Claim("fullName", user.FirstName + " " + user.LastName));
         claims.Add(new Claim(ClaimTypes.Role, string.Join(";", roles)));
         claims.Add(new Claim(SystemConstants.Claims.Permissions, JsonConvert.SerializeObject(permissions)));
         

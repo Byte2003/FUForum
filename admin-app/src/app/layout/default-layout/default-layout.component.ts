@@ -17,7 +17,7 @@ import {
 
 import { DefaultFooterComponent, DefaultHeaderComponent } from './';
 import { navItems } from './_nav';
-import { UserService } from '../../shared/services/user.service';
+import { UsersService } from '../../shared/services/user.service';
 import { Function } from '../../shared/models';
 
 function isOverflown(element: HTMLElement) {
@@ -53,7 +53,7 @@ export class DefaultLayoutComponent {
   public navItems = [...navItems];
   public functions : Function[] = [];
 
-  constructor(private userService: UserService, private authService: AuthService) {
+  constructor(private userService: UsersService, private authService: AuthService) {
     this.loadMenu();
   }
 

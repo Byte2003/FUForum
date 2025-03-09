@@ -43,6 +43,7 @@
     <Folder Include="wwwroot\lib\jquery-validation\dist\" />
     <Folder Include="wwwroot\lib\jquery\" />
     <Folder Include="wwwroot\lib\jquery\dist\" />
+    <Folder Include="wwwroot\user-attachments\" />
   </ItemGroup>
 
 </Project>

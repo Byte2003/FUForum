@@ -11,7 +11,7 @@ public class UserCreateRequestValidatorTest
         {
             request = new UserCreateRequest()
             {
-                Dob = DateTime.Now,
+                Dob = DateTime.Now.ToString(),
                 Email = "byte050403@gmail.com",
                 FirstName = "Test",
                 LastName = "test",

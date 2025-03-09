@@ -5,7 +5,7 @@ import { Pagination, Role } from '../../../../shared/models';
 import { NotificationService } from '../../../..//shared/services';
 import { BsModalRef } from 'ngx-bootstrap/modal';
 import { Subscription } from 'rxjs';
-import { MessageConstants } from '../../constants';
+import { MessageConstants } from '../../../../shared/constants';
 
 @Component({
   selector: 'app-roles-detail',

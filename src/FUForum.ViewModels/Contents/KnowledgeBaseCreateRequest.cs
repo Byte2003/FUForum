@@ -1,9 +1,12 @@
 ﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 
 namespace FUForum.ViewModels.Contents;
 
 public class KnowledgeBaseCreateRequest
 {
+    public int? Id { get; set; }
+
     public int CategoryId { get; set; }
 
     public string Title { get; set; }
@@ -24,7 +27,7 @@ public class KnowledgeBaseCreateRequest
 
     public string Note { get; set; }
 
-    public string Labels { get; set; }
+    public string[]? Labels { get; set; } 
     
     public List<IFormFile> Attachments { get; set; }
 }

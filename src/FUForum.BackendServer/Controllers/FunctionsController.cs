@@ -11,6 +11,7 @@ using FUForum.BackendServer.Data.Entities;
 using FUForum.BackendServer.Helpers;
 using FUForum.ViewModels;
 using FUForum.ViewModels.Systems;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace FUForum.BackendServer.Controllers
 {
@@ -40,6 +41,25 @@ namespace FUForum.BackendServer.Controllers
                 ParentId = f.ParentId
             });
             return Ok(functionVMs);
+        }
+
+        [HttpGet("{functionId}/parents")]
+        [ClaimRequirement(FunctionCode.SYSTEM_FUNCTION, CommandCode.VIEW)]
+        public async Task<IActionResult> GetFunctionsByParentId(string functionId)
+        {
+            var functions = _context.Functions.Where(x => x.ParentId == functionId);
+
+            var functionvms = await functions.Select(u => new FunctionVM()
+            {
+                Id = u.Id,
+                Name = u.Name,
+                Url = u.Url,
+                SortOrder = u.SortOrder,
+                ParentId = u.ParentId,
+                Icon = u.Icon
+            }).ToListAsync();
+
+            return Ok(functionvms);
         }
 
         [HttpGet]
@@ -136,13 +156,14 @@ namespace FUForum.BackendServer.Controllers
             var dbFunction = await _context.Functions.FindAsync(request.Id);
             if (dbFunction != null)
                 return BadRequest(new ApiBadRequestResponse($"Function with id {request.Id} is existed."));
-            var function = new Function()
+            var function = new Data.Entities.Function()
             {
                 Id = request.Id,
                 Name = request.Name,
                 ParentId = request.ParentId,
                 SortOrder = request.SortOrder,
-                Url = request.Url
+                Url = request.Url,
+                Icon = request.Icon
             };
             _context.Functions.Add(function);
             var result = await _context.SaveChangesAsync();
@@ -170,6 +191,10 @@ namespace FUForum.BackendServer.Controllers
                 return NotFound(new ApiNotFoundResponse($"Function with id {id} is not found!"));
 
             _context.Functions.Remove(function);
+
+            var commands = _context.CommandInFunctions.Where(x => x.FunctionId == id);
+            _context.CommandInFunctions.RemoveRange(commands);
+
             var result = await _context.SaveChangesAsync();
             if (result > 0)
             {
@@ -245,26 +270,48 @@ namespace FUForum.BackendServer.Controllers
 
             return Ok(data);
         }
-        [HttpPost("{functionId}/commands")]       
+        [HttpPost("{functionId}/commands")]
         [ClaimRequirement(FunctionCode.SYSTEM_FUNCTION, CommandCode.CREATE)]
         [ApiValidationFilter]
-        public async Task<IActionResult> PostCommandToFunction(string functionId, [FromBody] AddCommandToFunctionRequest request)
+        public async Task<IActionResult> PostCommandToFunction(string functionId, [FromBody] CommandAssignRequest request)
         {
-            var commandInFunction = await _context.CommandInFunctions.FindAsync(request.CommandId, request.FunctionId);
-            if (commandInFunction != null)
-                return BadRequest(new ApiBadRequestResponse($"This command has been added to function"));
-
-            var entity = new CommandInFunction()
+            foreach (var commandId in request.CommandIds)
             {
-                CommandId = request.CommandId,
-                FunctionId = request.FunctionId
-            };
-            _context.CommandInFunctions.Add(entity);
+                if (await _context.CommandInFunctions.FindAsync(commandId, functionId) != null)
+                    return BadRequest(new ApiBadRequestResponse("This command has been existed in function"));
+
+                var entity = new CommandInFunction()
+                {
+                    CommandId = commandId,
+                    FunctionId = functionId
+                };
+
+                _context.CommandInFunctions.Add(entity);
+            }
+
+            if (request.AddToAllFunctions)
+            {
+                var otherFunctions = _context.Functions.Where(x => x.Id != functionId);
+                foreach (var function in otherFunctions)
+                {
+                    foreach (var commandId in request.CommandIds)
+                    {
+                        if (await _context.CommandInFunctions.FindAsync(request.CommandIds, function.Id) == null)
+                        {
+                            _context.CommandInFunctions.Add(new CommandInFunction()
+                            {
+                                CommandId = commandId,
+                                FunctionId = function.Id
+                            });
+                        }
+                    }
+                }
+            }
             var result = await _context.SaveChangesAsync();
 
             if (result > 0)
             {
-                return CreatedAtAction(nameof(GetById), new { commandId = request.CommandId, functionId = request.FunctionId }, request);
+                return CreatedAtAction(nameof(GetById), new { request.CommandIds, functionId });
             }
             else
             {
@@ -272,21 +319,19 @@ namespace FUForum.BackendServer.Controllers
             }
         }
 
-        [HttpDelete("{functionId}/commands/{commandId}")]
-        [ClaimRequirement(FunctionCode.SYSTEM_FUNCTION, CommandCode.DELETE)]
-        [ApiValidationFilter]
-        public async Task<IActionResult> DeleteCommandOfFunction(string functionId, string commandId)
+        [HttpDelete("{functionId}/commands")]
+        [ClaimRequirement(FunctionCode.SYSTEM_FUNCTION, CommandCode.UPDATE)]
+        public async Task<IActionResult> DeleteCommandToFunction(string functionId, [FromQuery] CommandAssignRequest request)
         {
-            var commandInFunction = await _context.CommandInFunctions.FindAsync(functionId, commandId);
-            if (commandInFunction == null)
-                return BadRequest($"This command is not existed in function");
-
-            var entity = new CommandInFunction()
+            foreach (var commandId in request.CommandIds)
             {
-                CommandId = commandId,
-                FunctionId = functionId
-            };
-            _context.CommandInFunctions.Remove(entity);
+                var entity = await _context.CommandInFunctions.FindAsync(commandId, functionId);
+                if (entity == null)
+                    return BadRequest(new ApiBadRequestResponse("This command is not existed in function"));
+
+                _context.CommandInFunctions.Remove(entity);
+            }
+
             var result = await _context.SaveChangesAsync();
 
             if (result > 0)
@@ -295,7 +340,7 @@ namespace FUForum.BackendServer.Controllers
             }
             else
             {
-                return BadRequest(new ApiBadRequestResponse("Delete command of function failed"));
+                return BadRequest(new ApiBadRequestResponse("Delete command to function failed"));
             }
         }
     }

@@ -5,3 +5,8 @@ export * from './category.model';
 export * from './pagination.model';
 export * from './permission.model';
 export * from './role.model';
+export * from './command.model';
+export * from './command-assign.model';
+export * from './permission-screen.model';
+export * from './permission-update-request.model';
+export * from './knowledge-base.model';

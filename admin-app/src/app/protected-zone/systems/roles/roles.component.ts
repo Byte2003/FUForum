@@ -4,7 +4,7 @@ import { BsModalRef, BsModalService } from 'ngx-bootstrap/modal';
 import { RolesService } from '../../../shared/services/roles.service';
 import { Pagination, Role } from '../../../shared/models';
 import { NotificationService } from '../../../shared/services';
-import { MessageConstants } from '../constants';
+import { MessageConstants } from '../../../shared/constants';
 import { RolesDetailComponent } from './roles-detail/roles-detail.component';
 
 @Component({

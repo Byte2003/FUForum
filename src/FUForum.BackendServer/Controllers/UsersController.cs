@@ -3,6 +3,7 @@ using FUForum.BackendServer.Data;
 using FUForum.BackendServer.Data.Entities;
 using FUForum.BackendServer.Helpers;
 using FUForum.ViewModels;
+using FUForum.ViewModels.Contents;
 using FUForum.ViewModels.Systems;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -119,7 +120,7 @@ namespace FUForum.BackendServer.Controllers
                 PhoneNumber = request.PhoneNumber,
                 FirstName = request.FirstName,
                 LastName = request.LastName,
-                Dob = request.Dob
+                Dob = DateTime.Parse(request.Dob)
             };
             var result = await _userManager.CreateAsync(user, request.Password);
             if (result.Succeeded)
@@ -135,7 +136,6 @@ namespace FUForum.BackendServer.Controllers
         // URL: PUT: https://localhost:7017/api/users
         [HttpPut("{id}")]
         [ClaimRequirement(FunctionCode.SYSTEM_USER, CommandCode.UPDATE)]
-        [ApiValidationFilter]
         public async Task<IActionResult> PutUser(string id, [FromBody] UserCreateRequest request)
         {
             var user = await _userManager.FindByIdAsync(id);
@@ -147,7 +147,7 @@ namespace FUForum.BackendServer.Controllers
             user.FirstName = request.FirstName;
             user.LastName = request.LastName;
             user.PhoneNumber = request.PhoneNumber;
-            user.Dob = request.Dob;
+            user.Dob = DateTime.Parse(request.Dob);
 
             var result = await _userManager.UpdateAsync(user);
             if (result.Succeeded)
@@ -188,6 +188,13 @@ namespace FUForum.BackendServer.Controllers
             if (user == null)
             {
                 return NotFound(new ApiNotFoundResponse("Cannot find user"));
+            }
+
+            var adminUsers = await _userManager.GetUsersInRoleAsync(Constants.SystemConstants.Roles.Admin);
+            var otherUsers = adminUsers.Where(x => x.Id != id).ToList();
+            if (otherUsers.Count == 0)
+            {
+                return BadRequest(new ApiBadRequestResponse("You cannot remove the only admin user remaining."));
             }
 
             var result = await _userManager.DeleteAsync(user);
@@ -235,5 +242,92 @@ namespace FUForum.BackendServer.Controllers
                 .ToListAsync();
             return Ok(result);
         }
+
+        [HttpGet("{userId}/roles")]
+        [ClaimRequirement(FunctionCode.SYSTEM_USER, CommandCode.VIEW)]
+        public async Task<IActionResult> GetUserRoles(string userId)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+                return NotFound(new ApiNotFoundResponse($"Cannot found user with id: {userId}"));
+            var roles = await _userManager.GetRolesAsync(user);
+            return Ok(roles);
+        }
+
+        [HttpPost("{userId}/roles")]
+        [ClaimRequirement(FunctionCode.SYSTEM_USER, CommandCode.UPDATE)]
+        public async Task<IActionResult> PostRolesToUser(string userId, [FromBody] RoleAssignRequest request)
+        {
+            if (request.RoleNames?.Length == 0)
+            {
+                return BadRequest(new ApiBadRequestResponse("Role names cannot empty"));
+            }
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+                return NotFound(new ApiNotFoundResponse($"Cannot found user with id: {userId}"));
+            var result = await _userManager.AddToRolesAsync(user, request.RoleNames);
+            if (result.Succeeded)
+                return Ok();
+
+            return BadRequest(new ApiBadRequestResponse(result));
+        }
+
+        [HttpDelete("{userId}/roles")]
+        [ClaimRequirement(FunctionCode.SYSTEM_USER, CommandCode.VIEW)]
+        public async Task<IActionResult> RemoveRolesFromUser(string userId, [FromQuery] RoleAssignRequest request)
+        {
+            if (request.RoleNames?.Length == 0)
+            {
+                return BadRequest(new ApiBadRequestResponse("Role names cannot empty"));
+            }
+            if (request.RoleNames.Length == 1 && request.RoleNames[0] == Constants.SystemConstants.Roles.Admin)
+            {
+                return base.BadRequest(new ApiBadRequestResponse($"Cannot remove {Constants.SystemConstants.Roles.Admin} role"));
+            }
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+                return NotFound(new ApiNotFoundResponse($"Cannot found user with id: {userId}"));
+            var result = await _userManager.RemoveFromRolesAsync(user, request.RoleNames);
+            if (result.Succeeded)
+                return Ok();
+
+            return BadRequest(new ApiBadRequestResponse(result));
+        }
+
+        //[HttpGet("{userId}/knowledgeBases")]
+        //public async Task<IActionResult> GetKnowledgeBasesByUserId(string userId, int pageIndex, int pageSize)
+        //{
+        //    var query = from k in _context.KnowledgeBases
+        //                join c in _context.Categories on k.CategoryId equals c.Id
+        //                where k.OwnerUserId == userId
+        //                orderby k.CreateDate descending
+        //                select new { k, c };
+
+        //    var totalRecords = await query.CountAsync();
+
+        //    var items = await query.Skip((pageIndex - 1) * pageSize)
+        //    .Take(pageSize)
+        //       .Select(u => new KnowledgeBaseQuickVm()
+        //       {
+        //           Id = u.k.Id,
+        //           CategoryId = u.k.CategoryId,
+        //           Description = u.k.Description,
+        //           SeoAlias = u.k.SeoAlias,
+        //           Title = u.k.Title,
+        //           CategoryAlias = u.c.SeoAlias,
+        //           CategoryName = u.c.Name,
+        //           NumberOfVotes = u.k.NumberOfVotes,
+        //           CreateDate = u.k.CreateDate
+        //       }).ToListAsync();
+
+        //    var pagination = new Pagination<KnowledgeBaseQuickVm>
+        //    {
+        //        Items = items,
+        //        TotalRecords = totalRecords,
+        //        PageIndex = pageIndex,
+        //        PageSize = pageSize
+        //    };
+        //    return Ok(pagination);
+        //}
     }
 }

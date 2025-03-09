@@ -6,3 +6,7 @@ export * from './auth.service';
 export * from './roles.service';
 export * from './function.service';
 export * from './notification.service';
+export * from './commands.service';
+export * from  './permissions.service';
+export * from './categories.service';
+export * from './knowledge-bases.service';

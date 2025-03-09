@@ -4,6 +4,7 @@ import { KnowledgeBasesComponent } from "./knowledge-bases/knowledge-bases.compo
 import { CategoriesComponent } from "./categories/categories.component";
 import { CommentsComponent } from "./comments/comments.component";
 import { ReportsComponent } from "./reports/reports.component";
+import { KnowledgeBasesDetailComponent } from "./knowledge-bases-detail/knowledge-bases-detail.component";
 
 const routes: Routes = [
     {   path: '', 
@@ -11,6 +12,12 @@ const routes: Routes = [
     },
     {   path: 'knowledge-bases', 
         component: KnowledgeBasesComponent,
+    },
+    {   path: 'knowledge-bases-detail', 
+        component: KnowledgeBasesDetailComponent,
+    },
+    {   path: 'knowledge-bases-detail/:id', 
+        component: KnowledgeBasesDetailComponent,
     },
     {   path: 'categories',
         component: CategoriesComponent, 

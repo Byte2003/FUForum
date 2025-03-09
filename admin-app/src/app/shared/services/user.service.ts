@@ -1,54 +1,76 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { environment } from '../../../environments/environment';
 import { BaseService } from './base.service';
 import { catchError, map } from 'rxjs/operators';
-import { Function, User } from '../models';
+import { environment } from '../../../environments/environment';
+import { User, Pagination } from '../models';
 import { UtilitiesService } from './utilities.service';
 
-
 @Injectable({ providedIn: 'root' })
-export class UserService extends BaseService {
+export class UsersService extends BaseService {
+    private _sharedHeaders = new HttpHeaders();
 
     constructor(private http: HttpClient, private utilitiesService: UtilitiesService) {
-        console.log('UserService: constructor');
         super();
+        this._sharedHeaders = this._sharedHeaders.set('Content-Type', 'application/json');
+
     }
-    
-    getAll() {
-        const httpOption = {
-            headers: new HttpHeaders({
-                'Content-Type': 'application/json',
-            })
-        };
-        const url = `${environment.apiUrl}/api/Users`;
-        console.log('getAll URL:', url);
-        
-        return this.http.get<User[]>(url, httpOption)
+    add(entity: User) {
+        return this.http.post(`${environment.apiUrl}/api/users`, JSON.stringify(entity), { headers: this._sharedHeaders })
+            .pipe(catchError(this.handleError));
+    }
+
+    update(id: string, entity: User) {
+        return this.http.put(`${environment.apiUrl}/api/users/${id}`, JSON.stringify(entity), { headers: this._sharedHeaders })
+            .pipe(catchError(this.handleError));
+    }
+
+    getDetail(id: string) {
+        return this.http.get<User>(`${environment.apiUrl}/api/users/${id}`, { headers: this._sharedHeaders })
+            .pipe(catchError(this.handleError));
+    }
+
+    getAllPaging(filter: string, pageIndex: number, pageSize: number) {
+        return this.http.get<Pagination<User>>(`${environment.apiUrl}/api/users/filter?pageIndex=${pageIndex}&pageSize=${pageSize}&filter=${filter}`, { headers: this._sharedHeaders })
+            .pipe(map((response: Pagination<User>) => {
+                return response;
+            }), catchError(this.handleError));
+    }
+
+    delete(id: string) {
+        return this.http.delete(environment.apiUrl + '/api/users/' + id, { headers: this._sharedHeaders })
             .pipe(
-                catchError(error => {
-                    console.error('Error in getAll:', error);
-                    return this.handleError(error);
-                }),
-                map(response => {
-                    console.log('getAll response:', response);
-                    return response;
-                })
+                catchError(this.handleError)
             );
     }
-    
+
     getMenuByUser(userId: string) {
-        const httpOption = {
-            headers: new HttpHeaders({
-                'Content-Type': 'application/json',
-            })
-        };
-        const url = `${environment.apiUrl}/api/Users/${userId}/menu`;
-        console.log('getMenuByUser URL:', url);
-        return this.http.get<Function[]>(url, httpOption)
+        return this.http.get<Function[]>(`${environment.apiUrl}/api/users/${userId}/menu`, { headers: this._sharedHeaders })
             .pipe(map(response => {
-                var functions = this.utilitiesService.UnflatteringForLeftMenu(response);
+                const functions = this.utilitiesService.UnflatteringForLeftMenu(response);
                 return functions;
-            }));
-        }       
+            }), catchError(this.handleError));
+    }
+
+    getUserRoles(userId: string) {
+        return this.http.get<string[]>(`${environment.apiUrl}/api/users/${userId}/roles`, { headers: this._sharedHeaders })
+            .pipe(catchError(this.handleError));
+    }
+
+    removeRolesFromUser(id: string, roleNames: string[]) {
+        let rolesQuery = '';
+        for (const roleName of roleNames) {
+            rolesQuery += 'roleNames' + '=' + roleName + '&';
+        }
+        return this.http.delete(environment.apiUrl + '/api/users/' + id + '/roles?' + rolesQuery, { headers: this._sharedHeaders })
+            .pipe(
+                catchError(this.handleError)
+            );
+    }
+
+    assignRolesToUser(userId: string, assignRolesToUser: any) {
+        return this.http.post(`${environment.apiUrl}/api/users/${userId}/roles`,
+            JSON.stringify(assignRolesToUser), { headers: this._sharedHeaders })
+            .pipe(catchError(this.handleError));
+    }
 }

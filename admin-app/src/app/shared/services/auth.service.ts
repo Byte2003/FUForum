@@ -47,10 +47,8 @@ export class AuthService extends BaseService {
 
   get authorizationHeaderValue(): string | null {
     if (this.user) {
-      console.log('AuthService: authorizationHeaderValue', `${this.user.token_type} ${this.user.access_token}`);
       return `${this.user.token_type} ${this.user.access_token}`;
     }
-    console.log('AuthService: authorizationHeaderValue', null);
     return null;
   }
 

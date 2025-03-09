@@ -3,6 +3,7 @@ using FUForum.BackendServer.Data;
 using FUForum.BackendServer.Data.Entities;
 using FUForum.ViewModels;
 using FUForum.ViewModels.Contents;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -44,7 +45,7 @@ public class CategoriesController : BaseController
         }
 
         [HttpGet]
-        [ClaimRequirement(FunctionCode.CONTENT_CATEGORY, CommandCode.VIEW)]
+        [AllowAnonymous]
 
         public async Task<IActionResult> GetCategories()
         {
@@ -56,8 +57,7 @@ public class CategoriesController : BaseController
         }
 
         [HttpGet("filter")]
-        [ClaimRequirement(FunctionCode.CONTENT_CATEGORY, CommandCode.VIEW)]
-
+        [AllowAnonymous]
         public async Task<IActionResult> GetCategoriesPaging(string filter, int pageIndex, int pageSize)
         {
             var query = _context.Categories.AsQueryable();
@@ -67,7 +67,7 @@ public class CategoriesController : BaseController
                 || x.Name.Contains(filter));
             }
             var totalRecords = await query.CountAsync();
-            var items = await query.Skip((pageIndex - 1 * pageSize))
+            var items = await query.Skip((pageIndex - 1) * pageSize)
                 .Take(pageSize).ToListAsync();
 
             var data = items.Select(c => CreateCategoryVM(c)).ToList();
@@ -81,9 +81,8 @@ public class CategoriesController : BaseController
         }
 
         [HttpGet("{id}")]
-        [ClaimRequirement(FunctionCode.CONTENT_CATEGORY, CommandCode.VIEW)]
-
-        public async Task<IActionResult> GetById(string id)
+        [AllowAnonymous]
+        public async Task<IActionResult> GetById(int id)
         {
             var category = await _context.Categories.FindAsync(id);
             if (category == null)
@@ -127,7 +126,7 @@ public class CategoriesController : BaseController
         [HttpDelete("{id}")]
         [ClaimRequirement(FunctionCode.CONTENT_CATEGORY, CommandCode.DELETE)]
         [ApiValidationFilter]
-        public async Task<IActionResult> DeleteCategory(string id)
+        public async Task<IActionResult> DeleteCategory(int id)
         {
             var category = await _context.Categories.FindAsync(id);
             if (category == null)

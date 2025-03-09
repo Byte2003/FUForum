@@ -13,5 +13,5 @@ public class UserCreateRequest
     
     public string LastName { get; set; }
     
-    public DateTime Dob { get; set; }
+    public string Dob { get; set; }
 }

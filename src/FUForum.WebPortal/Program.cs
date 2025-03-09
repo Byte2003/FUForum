@@ -1,5 +1,7 @@
+using FUForum.WebPortal.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
 
@@ -13,7 +15,7 @@ namespace FUForum.WebPortal
 
             // Add services to the container.
             builder.Services.AddControllersWithViews();
-
+            builder.Services.AddHttpClient();
             // OpenID Connect
             builder.Services.AddAuthentication(options =>
             {
@@ -123,6 +125,13 @@ namespace FUForum.WebPortal
                     //    }
                     //};
                 });
+
+            //DI
+            builder.Services.AddTransient<IUserApiClient, UserApiClient>();
+            builder.Services.TryAddSingleton<IHttpContextAccessor, HttpContextAccessor>();
+            builder.Services.AddTransient<ILabelApiClient, LabelApiClient>();
+            builder.Services.AddTransient<ICategoryApiClient, CategoryApiClient>();
+            builder.Services.AddTransient<IKnowledgeBaseApiClient, KnowledgeBaseApiClient>();
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.
@@ -142,10 +151,45 @@ namespace FUForum.WebPortal
             app.UseAuthorization();
 
             app.MapControllerRoute(
-                name: "default",
-                pattern: "{controller=Home}/{action=Index}/{id?}");
+                name: "My KBs",
+                pattern: "/my-kbs",
+                new { controller = "Account", action = "MyKnowledgeBases" });
 
+            app.MapControllerRoute(
+                    name: "New KB",
+                    pattern: "/new-kb",
+                    new { controller = "Account", action = "CreateNewKnowledgeBase" });
+
+            app.MapControllerRoute(
+                    name: "Edit KB",
+                    pattern: "/edit-kb/{id}",
+                    new { controller = "Account", action = "EditKnowledgeBase" });
+
+            app.MapControllerRoute(
+                    name: "List By Tag Id",
+                    pattern: "/tag/{tagId}",
+                    new { controller = "KnowledgeBase", action = "ListByTag" });
+
+            app.MapControllerRoute(
+                    name: "Search KB",
+                    pattern: "/search",
+                    new { controller = "KnowledgeBase", action = "Search" });
+
+            app.MapControllerRoute(
+                    name: "KnowledgeBaseDetails",
+                    pattern: "/kb/{seoAlias}-{id}",
+                    new { controller = "KnowledgeBase", action = "Details" });
+
+            app.MapControllerRoute(
+                    name: "ListByCategoryId",
+                    pattern: "/cat/{categoryAlias}-{id}",
+                    new { controller = "KnowledgeBase", action = "ListByCategoryId" });
+
+            app.MapControllerRoute(
+                    name: "default",
+                    pattern: "{controller=Home}/{action=Index}/{id?}");
             app.Run();
+
         }
     }
 }

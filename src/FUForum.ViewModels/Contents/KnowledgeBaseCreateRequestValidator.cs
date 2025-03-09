@@ -16,7 +16,6 @@ public class KnowledgeBaseCreateRequestValidator : AbstractValidator<KnowledgeBa
         RuleFor(x => x.ErrorMessage).NotEmpty().WithMessage("ErrorMessage is required");
         RuleFor(x => x.Workaround).NotEmpty().WithMessage("Workaround is required");
         RuleFor(x => x.Note).NotEmpty().WithMessage("Note is required");
-        RuleFor(x => x.Labels).NotEmpty().WithMessage("Labels is required");
-        
+       
     }
 }

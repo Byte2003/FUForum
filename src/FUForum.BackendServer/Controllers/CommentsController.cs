@@ -1,157 +1,333 @@
-﻿using FUForum.BackendServer.Authorization;
+﻿using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using FUForum.BackendServer.Authorization;
 using FUForum.BackendServer.Data.Entities;
+using FUForum.BackendServer.Helpers;
+using FUForum.ViewModels.Contents;
+using FUForum.ViewModels;
+using FUForum.BackendServer.Authorization;
+using FUForum.BackendServer.Constants;
+using FUForum.BackendServer.Data.Entities;
+using FUForum.BackendServer.Extensions;
 using FUForum.BackendServer.Helpers;
 using FUForum.ViewModels;
 using FUForum.ViewModels.Contents;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
-namespace FUForum.BackendServer.Controllers;
-
-public partial class KnowledgeBasesController
+namespace FUForum.BackendServer.Controllers
 {
-    #region Comments
-
-    [HttpGet("{knowledgeBaseId}/comments/filter")]
-    [ClaimRequirement(FunctionCode.CONTENT_COMMENT, CommandCode.VIEW)]
-    public async Task<IActionResult> GetCommentsPaging(int knowledgeBaseId, string filter, int pageIndex,
-        int pageSize)
+    public partial class KnowledgeBasesController
     {
-        var query = _context.Comments.Where(x => x.KnowledgeBaseId == knowledgeBaseId).AsQueryable();
-        if (!string.IsNullOrEmpty(filter))
-        {
-            query = query.Where(x => x.Content.Contains(filter));
-        }
+        #region Comments
 
-        var totalRecords = await query.CountAsync();
-        var items = await query.Skip((pageIndex - 1 * pageSize))
-            .Take(pageSize)
-            .Select(c => new CommentVM()
+        [HttpGet("{knowledgeBaseId}/comments/filter")]
+        [ClaimRequirement(FunctionCode.CONTENT_COMMENT, CommandCode.VIEW)]
+        public async Task<IActionResult> GetCommentsPaging(int? knowledgeBaseId, string filter, int pageIndex, int pageSize)
+        {
+            var query = from c in _context.Comments
+                        join u in _context.Users
+                            on c.OwnerUserId equals u.Id
+                        select new { c, u };
+            if (knowledgeBaseId.HasValue)
             {
-                Id = c.Id,
-                Content = c.Content,
-                CreateDate = c.CreateDate,
-                KnowledgeBaseId = c.KnowledgeBaseId,
-                LastModifiedDate = c.LastModifiedDate,
-                OwnerUserId = c.OwnerUserId
-            })
-            .ToListAsync();
+                query = query.Where(x => x.c.KnowledgeBaseId == knowledgeBaseId.Value);
+            }
+            if (!string.IsNullOrEmpty(filter))
+            {
+                query = query.Where(x => x.c.Content.Contains(filter));
+            }
+            var totalRecords = await query.CountAsync();
+            var items = await query.OrderByDescending(x => x.c.CreateDate)
+                .Skip((pageIndex - 1) * pageSize)
+                .Take(pageSize)
+                .Select(c => new CommentVM()
+                {
+                    Id = c.c.Id,
+                    Content = c.c.Content,
+                    CreateDate = c.c.CreateDate,
+                    KnowledgeBaseId = c.c.KnowledgeBaseId,
+                    LastModifiedDate = c.c.LastModifiedDate,
+                    OwnerUserId = c.c.OwnerUserId,
+                    OwnerName = c.u.FirstName + " " + c.u.LastName
+                })
+                .ToListAsync();
 
-        var pagination = new Pagination<CommentVM>
-        {
-            Items = items,
-            TotalRecords = totalRecords,
-        };
-        return Ok(pagination);
-    }
-
-    [HttpGet("{knowledgeBaseId}/comments/{commentId}")]
-    [ClaimRequirement(FunctionCode.CONTENT_COMMENT, CommandCode.VIEW)]
-    public async Task<IActionResult> GetCommentDetail(int commentId)
-    {
-        var comment = await _context.Comments.FindAsync(commentId);
-        if (comment == null)
-            return NotFound(new ApiNotFoundResponse("Cannot found comment"));
-
-        var commentVm = new CommentVM()
-        {
-            Id = comment.Id,
-            Content = comment.Content,
-            CreateDate = comment.CreateDate,
-            KnowledgeBaseId = comment.KnowledgeBaseId,
-            LastModifiedDate = comment.LastModifiedDate,
-            OwnerUserId = comment.OwnerUserId
-        };
-
-        return Ok(commentVm);
-    }
-
-    [HttpPost("{knowledgeBaseId}/comments")]
-    [ClaimRequirement(FunctionCode.CONTENT_COMMENT, CommandCode.CREATE)]
-    public async Task<IActionResult> PostComment(int knowledgeBaseId, [FromBody] CommentCreateRequest request)
-    {
-        var comment = new Comment()
-        {
-            Content = request.Content,
-            KnowledgeBaseId = request.KnowledgeBaseId,
-            OwnerUserId = string.Empty /*TODO: GET USER FROM CLAIM*/,
-        };
-        _context.Comments.Add(comment);
-
-        var knowledgeBase = await _context.KnowledgeBases.FindAsync(knowledgeBaseId);
-        if (knowledgeBase != null)
-            return BadRequest();
-        knowledgeBase.NumberOfComments = knowledgeBase.NumberOfVotes.GetValueOrDefault(0) + 1;
-        _context.KnowledgeBases.Update(knowledgeBase);
-
-        var result = await _context.SaveChangesAsync();
-        if (result > 0)
-        {
-            return CreatedAtAction(nameof(GetCommentDetail), new { id = knowledgeBaseId, commentId = comment.Id },
-                request);
-        }
-        else
-        {
-            return BadRequest(new ApiBadRequestResponse("Create Comment failed"));
-        }
-    }
-
-    [HttpPut("{knowledgeBaseId}/comments/{commentId}")]
-    [ClaimRequirement(FunctionCode.CONTENT_COMMENT, CommandCode.UPDATE)]
-    public async Task<IActionResult> PutComment(int commentId, [FromBody] CommentCreateRequest request)
-    {
-        var comment = await _context.Comments.FindAsync(commentId);
-        if (comment == null)
-            return NotFound(new ApiNotFoundResponse("Cannot found comment"));
-        if (comment.OwnerUserId != User.Identity.Name)
-            return Forbid();
-
-        comment.Content = request.Content;
-        _context.Comments.Update(comment);
-
-        var result = await _context.SaveChangesAsync();
-
-        if (result > 0)
-        {
-            return NoContent();
+            var pagination = new Pagination<CommentVM>
+            {
+                Items = items,
+                TotalRecords = totalRecords,
+            };
+            return Ok(pagination);
         }
 
-        return BadRequest(new ApiBadRequestResponse("Update Comment failed"));
-    }
-
-    [HttpDelete("{knowledgeBaseId}/comments/{commentId}")]
-    [ClaimRequirement(FunctionCode.CONTENT_COMMENT, CommandCode.DELETE)]
-    public async Task<IActionResult> DeleteComment(int knowledgeBaseId, int commentId)
-    {
-        var comment = await _context.Comments.FindAsync(commentId);
-        if (comment == null)
-            return NotFound(new ApiNotFoundResponse("Cannot found comment"));
-
-        _context.Comments.Remove(comment);
-
-        var knowledgeBase = await _context.KnowledgeBases.FindAsync(knowledgeBaseId);
-        if (knowledgeBase != null)
-            return BadRequest();
-        knowledgeBase.NumberOfComments = knowledgeBase.NumberOfVotes.GetValueOrDefault(0) - 1;
-        _context.KnowledgeBases.Update(knowledgeBase);
-
-        var result = await _context.SaveChangesAsync();
-        if (result > 0)
+        [HttpGet("{knowledgeBaseId}/comments/{commentId}")]
+        [ClaimRequirement(FunctionCode.CONTENT_COMMENT, CommandCode.VIEW)]
+        public async Task<IActionResult> GetCommentDetail(int commentId)
         {
-            var commentVm = new CommentVM()
+            var comment = await _context.Comments.FindAsync(commentId);
+            if (comment == null)
+                return NotFound(new ApiNotFoundResponse($"Cannot found comment with id: {commentId}"));
+            var user = await _context.Users.FindAsync(comment.OwnerUserId);
+            var commentVM = new CommentVM()
             {
                 Id = comment.Id,
                 Content = comment.Content,
                 CreateDate = comment.CreateDate,
                 KnowledgeBaseId = comment.KnowledgeBaseId,
                 LastModifiedDate = comment.LastModifiedDate,
-                OwnerUserId = comment.OwnerUserId
+                OwnerUserId = comment.OwnerUserId,
+                OwnerName = user.FirstName + " " + user.LastName
             };
-            return Ok(commentVm);
+
+            return Ok(commentVM);
         }
 
-        return BadRequest(new ApiBadRequestResponse("Delete Comment failed"));
-    }
+        [HttpPost("{knowledgeBaseId}/comments")]
+        [ApiValidationFilter]
+        public async Task<IActionResult> PostComment(int knowledgeBaseId, [FromBody] CommentCreateRequest request)
+        {
+            var comment = new Comment()
+            {
+                Content = request.Content,
+                KnowledgeBaseId = knowledgeBaseId,
+                OwnerUserId = User.GetUserId(),
+                ReplyId = request.ReplyId
+            };
+            _context.Comments.Add(comment);
 
-    #endregion Comments
+            var knowledgeBase = await _context.KnowledgeBases.FindAsync(knowledgeBaseId);
+            if (knowledgeBase == null)
+                return BadRequest(new ApiBadRequestResponse($"Cannot found knowledge base with id: {knowledgeBaseId}"));
+
+            knowledgeBase.NumberOfComments = knowledgeBase.NumberOfComments.GetValueOrDefault(0) + 1;
+            _context.KnowledgeBases.Update(knowledgeBase);
+
+            var result = await _context.SaveChangesAsync();
+            if (result > 0)
+            {
+                //await _cacheService.RemoveAsync(CacheConstants.RecentComments);
+
+                ////Send mail
+                //if (comment.ReplyId.HasValue)
+                //{
+                //    var repliedComment = await _context.Comments.FindAsync(comment.ReplyId.Value);
+                //    var repledUser = await _context.Users.FindAsync(repliedComment.OwnerUserId);
+                //    var emailModel = new RepliedCommentVM()
+                //    {
+                //        CommentContent = request.Content,
+                //        KnowledeBaseId = knowledgeBaseId,
+                //        KnowledgeBaseSeoAlias = knowledgeBase.SeoAlias,
+                //        KnowledgeBaseTitle = knowledgeBase.Title,
+                //        RepliedName = repledUser.FirstName + " " + repledUser.LastName
+                //    };
+                //    //https://github.com/leemunroe/responsive-html-email-template
+                //    var htmlContent = await _viewRenderService.RenderToStringAsync("_RepliedCommentEmail", emailModel);
+                //    await _emailSender.SendEmailAsync(repledUser.Email, "Có người đang trả lời bạn", htmlContent);
+                //}
+                return CreatedAtAction(nameof(GetCommentDetail), new { id = knowledgeBaseId, commentId = comment.Id }, new CommentVM()
+                {
+                    Id = comment.Id
+                });
+            }
+            else
+            {
+                return BadRequest(new ApiBadRequestResponse("Create comment failed"));
+            }
+        }
+
+        [HttpPut("{knowledgeBaseId}/comments/{commentId}")]
+        [ClaimRequirement(FunctionCode.CONTENT_COMMENT, CommandCode.UPDATE)]
+        [ApiValidationFilter]
+        public async Task<IActionResult> PutComment(int commentId, [FromBody] CommentCreateRequest request)
+        {
+            var comment = await _context.Comments.FindAsync(commentId);
+            if (comment == null)
+                return BadRequest(new ApiBadRequestResponse($"Cannot found comment with id: {commentId}"));
+            if (comment.OwnerUserId != User.GetUserId())
+                return Forbid();
+
+            comment.Content = request.Content;
+            _context.Comments.Update(comment);
+
+            var result = await _context.SaveChangesAsync();
+
+            if (result > 0)
+            {
+                return NoContent();
+            }
+            return BadRequest(new ApiBadRequestResponse($"Update comment failed"));
+        }
+
+        [HttpDelete("{knowledgeBaseId}/comments/{commentId}")]
+        [ClaimRequirement(FunctionCode.CONTENT_COMMENT, CommandCode.DELETE)]
+        public async Task<IActionResult> DeleteComment(int knowledgeBaseId, int commentId)
+        {
+            var comment = await _context.Comments.FindAsync(commentId);
+            if (comment == null)
+                return NotFound(new ApiNotFoundResponse($"Cannot found the comment with id: {commentId}"));
+
+            _context.Comments.Remove(comment);
+
+            var knowledgeBase = await _context.KnowledgeBases.FindAsync(knowledgeBaseId);
+            if (knowledgeBase == null)
+                return BadRequest(new ApiBadRequestResponse($"Cannot found knowledge base with id: {knowledgeBaseId}"));
+
+            knowledgeBase.NumberOfComments = knowledgeBase.NumberOfComments.GetValueOrDefault(0) - 1;
+            _context.KnowledgeBases.Update(knowledgeBase);
+
+            var result = await _context.SaveChangesAsync();
+            if (result > 0)
+            {
+                //Delete cache
+                //await _cacheService.RemoveAsync(CacheConstants.RecentComments);
+                var commentVM = new CommentVM()
+                {
+                    Id = comment.Id,
+                    Content = comment.Content,
+                    CreateDate = comment.CreateDate,
+                    KnowledgeBaseId = comment.KnowledgeBaseId,
+                    LastModifiedDate = comment.LastModifiedDate,
+                    OwnerUserId = comment.OwnerUserId
+                };
+                return Ok(commentVM);
+            }
+            return BadRequest(new ApiBadRequestResponse($"Delete comment failed"));
+        }
+
+        [HttpGet("comments/recent/{take}")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetRecentComments(int take)
+        {
+            var query = from c in _context.Comments
+                        join u in _context.Users
+                            on c.OwnerUserId equals u.Id
+                        join k in _context.KnowledgeBases
+            on c.KnowledgeBaseId equals k.Id
+                        orderby c.CreateDate descending
+                        select new { c, u, k };
+
+            var comments = await query.Take(take).Select(x => new CommentVM()
+            {
+                Id = x.c.Id,
+                Content = x.c.Content,
+                CreateDate = x.c.CreateDate,
+                KnowledgeBaseId = x.c.KnowledgeBaseId,
+                OwnerUserId = x.c.OwnerUserId,
+                KnowledgeBaseTitle = x.k.Title,
+                OwnerName = x.u.FirstName + " " + x.u.LastName,
+                KnowledgeBaseSeoAlias = x.k.SeoAlias
+            }).ToListAsync();
+
+            return Ok(comments);
+        }
+
+        [HttpGet("{knowledgeBaseId}/comments/tree")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetCommentTreeByKnowledgeBaseId(int knowledgeBaseId, int pageIndex, int pageSize)
+        {
+            var query = from c in _context.Comments
+                        join u in _context.Users
+                            on c.OwnerUserId equals u.Id
+                        where c.KnowledgeBaseId == knowledgeBaseId
+                        where c.ReplyId == null
+                        select new { c, u };
+
+            var totalRecords = await query.CountAsync();
+            var rootComments = await query.OrderByDescending(x => x.c.CreateDate)
+                .Skip((pageIndex - 1) * pageSize)
+                .Take(pageSize)
+                .Select(x => new CommentVM()
+                {
+                    Id = x.c.Id,
+                    Content = x.c.Content,
+                    CreateDate = x.c.CreateDate,
+                    KnowledgeBaseId = x.c.KnowledgeBaseId,
+                    OwnerUserId = x.c.OwnerUserId,
+                    OwnerName = x.u.FirstName + " " + x.u.LastName,
+                })
+                .ToListAsync();
+
+            foreach (var comment in rootComments)//only loop through root 
+            {
+                // you can skip the check if you want an empty list instead of null
+                // when there is no children
+                var repliedQuery = from c in _context.Comments
+                                   join u in _context.Users
+                                       on c.OwnerUserId equals u.Id
+                                   where c.KnowledgeBaseId == knowledgeBaseId
+                                   where c.ReplyId == comment.Id
+                                   select new { c, u };
+
+                var totalRepliedCommentsRecords = await repliedQuery.CountAsync();
+                var repliedComments = await repliedQuery.OrderByDescending(x => x.c.CreateDate)
+                    .Take(pageSize)
+                    .Select(x => new CommentVM()
+                    {
+                        Id = x.c.Id,
+                        Content = x.c.Content,
+                        CreateDate = x.c.CreateDate,
+                        KnowledgeBaseId = x.c.KnowledgeBaseId,
+                        OwnerUserId = x.c.OwnerUserId,
+                        OwnerName = x.u.FirstName + " " + x.u.LastName,
+                    })
+                    .ToListAsync();
+
+                comment.Children = new Pagination<CommentVM>()
+                {
+                    PageIndex = 1,
+                    PageSize = 10,
+                    Items = repliedComments,
+                    TotalRecords = totalRepliedCommentsRecords
+                };
+            }
+
+            return Ok(new Pagination<CommentVM>
+            {
+                PageIndex = pageIndex,
+                PageSize = pageSize,
+                Items = rootComments,
+                TotalRecords = totalRecords
+            });
+        }
+
+        [HttpGet("{knowledgeBaseId}/comments/{rootCommentId}/replied")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetRepliedCommentsPaging(int knowledgeBaseId, int rootCommentId, int pageIndex, int pageSize)
+        {
+            var query = from c in _context.Comments
+                        join u in _context.Users
+                            on c.OwnerUserId equals u.Id
+                        where c.KnowledgeBaseId == knowledgeBaseId
+                        where c.ReplyId == rootCommentId
+                        select new { c, u };
+
+            var totalRecords = await query.CountAsync();
+            var comments = await query.OrderByDescending(x => x.c.CreateDate)
+                .Skip((pageIndex - 1) * pageSize)
+                .Take(pageSize)
+                .Select(x => new CommentVM()
+                {
+                    Id = x.c.Id,
+                    Content = x.c.Content,
+                    CreateDate = x.c.CreateDate,
+                    KnowledgeBaseId = x.c.KnowledgeBaseId,
+                    OwnerUserId = x.c.OwnerUserId,
+                    OwnerName = x.u.FirstName + " " + x.u.LastName,
+                })
+                .ToListAsync();
+
+            return Ok(new Pagination<CommentVM>
+            {
+                PageIndex = pageIndex,
+                PageSize = pageSize,
+                Items = comments,
+                TotalRecords = totalRecords
+            });
+        }
+
+        #endregion Comments
+    }
 }

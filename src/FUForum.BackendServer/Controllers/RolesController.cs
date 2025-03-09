@@ -105,7 +105,7 @@ namespace FUForum.BackendServer.Controllers
         }
 
         // URL: PUT: /api/roles
-        [HttpPut]
+        [HttpPut("{id}")]
         [ClaimRequirement(FunctionCode.SYSTEM_ROLE, CommandCode.UPDATE)]
         [ApiValidationFilter]
         public async Task<IActionResult> PutRole(string id, [FromBody] RoleCreateRequest request)
@@ -133,7 +133,7 @@ namespace FUForum.BackendServer.Controllers
         }
 
         // URL: DELETE: /api/roles/{id}
-        [HttpDelete]
+        [HttpDelete("{id}")]
         [ClaimRequirement(FunctionCode.SYSTEM_ROLE, CommandCode.DELETE)]
         [ApiValidationFilter]
         public async Task<IActionResult> DeleteRole(string id)
@@ -190,8 +190,13 @@ namespace FUForum.BackendServer.Controllers
                     CommandId = permision.CommandId
                 });
             }
-            var existingPermissions = await _context.Permissions.Where(p => p.RoleId == roleId).ToListAsync();
+            var existingPermissions = await _context.Permissions.Where(p => p.RoleId == roleId).AsNoTracking().ToListAsync();
             _context.Permissions.RemoveRange(existingPermissions);
+            // Detach existing permissions to avoid tracking issues
+            //foreach (var permission in existingPermissions)
+            //{
+            //    _context.Entry(permission).State = EntityState.Detached;
+            //}
             _context.Permissions.AddRange(newPermissions);
             var result = await _context.SaveChangesAsync();
             if (result > 0)

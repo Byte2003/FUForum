@@ -99,14 +99,23 @@ namespace FUForum.BackendServer
                     options.Events.RaiseInformationEvents = true;
                     options.Events.RaiseFailureEvents = true;
                     options.Events.RaiseSuccessEvents = true;
-                }).AddInMemoryApiScopes(Config.GetApiScopes())
+                })
+                .AddInMemoryApiScopes(Config.GetApiScopes())
                 .AddInMemoryApiResources(Config.GetApiResources())
-                .AddInMemoryClients(Config.Clients)
+                .AddInMemoryClients(builder.Configuration.GetSection("IdentityServer:Clients"))
                 .AddInMemoryIdentityResources(Config.Ids)
                 .AddAspNetIdentity<User>()
                 .AddProfileService<IdentityProfileService>()
                 .AddDeveloperSigningCredential();
-
+            builder.Services.AddCors(option =>
+            {
+                option.AddPolicy("AllowOrigin", option =>
+                {
+                    option.WithOrigins("http://localhost:4200")
+                    .AllowAnyHeader()
+                    .AllowAnyMethod();
+                });
+            });
             // Authen and Author
             builder.Services.AddAuthentication()
                 .AddLocalApi("Bearer", option => { option.ExpectedScope = "api.fuforum.access"; });
@@ -118,6 +127,7 @@ namespace FUForum.BackendServer
                     policy.RequireAuthenticatedUser();
                 });
             });
+
             // Initialize data
             builder.Services.AddScoped<DbInitializer>();
 
@@ -151,6 +161,7 @@ namespace FUForum.BackendServer
             app.UseStaticFiles();
             app.UseHttpsRedirection();
             app.UseRouting();
+            app.UseCors("AllowOrigin");
             app.UseAuthentication();
             app.UseAuthorization();
             app.UseEndpoints(endpoints =>

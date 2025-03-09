@@ -9,7 +9,7 @@ namespace FUForum.BackendServer.Data.Entities
     public class KnowledgeBase : IDateTracking
     {
         [Key]
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        [DatabaseGenerated(DatabaseGeneratedOption.None)]
         public int Id { get; set; }
 
         [Required]
@@ -60,5 +60,7 @@ namespace FUForum.BackendServer.Data.Entities
         public int? NumberOfVotes { get; set; }
 
         public int? NumberOfReports { get; set; }
+
+        public int? ViewCount { get; set; }
     }
 }
